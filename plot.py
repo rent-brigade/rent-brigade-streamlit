@@ -2,29 +2,45 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import timedelta, datetime
+from supabase import create_client, Client
 
-# read in data (for now)
-dat = pd.read_csv("gouged_only_20250423_204640.csv")
+# Initialize Supabase client
+url: str = "https://bntkbculofzofhwzjsps.supabase.co"
+key: str = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(url, key)
 
-### Line chart
-# 1) create a time series (weekly)
-date_format = "%Y-%m-%d"
-dat["first_gouged_price_date"] = dat["first_gouged_price_date"].apply(lambda x: datetime.strptime(x, date_format))
-start_dt = dat["first_gouged_price_date"].min()
-end_dt = dat["first_gouged_price_date"].max()
+# Fetch data from Supabase
+st.header("Supervisor District Metrics")
+response = supabase.table('supervisor_district_metrics').select('*').execute()
+supervisor_district_metrics = pd.DataFrame(response.data)
+st.dataframe(supervisor_district_metrics)
 
-ref_dates = pd.date_range(start_dt,end_dt-timedelta(days=1))
+st.header("Council District Metrics")
+response = supabase.table('council_district_metrics').select('*').execute()
+council_district_metrics = pd.DataFrame(response.data)
+st.dataframe(council_district_metrics)
 
+st.header("Ever Gouged by Supervisor District")
+response = supabase.table('ever_gouged_by_supervisor_district').select('*').execute()
+ever_gouged_by_supervisor_district = pd.DataFrame(response.data)
+st.dataframe(ever_gouged_by_supervisor_district)
 
-# 2) get the count of listings that fall into "gouged"
-chart_dat = pd.DataFrame(index=ref_dates, columns=["gouged_count"])
-gouged_counts_by_day = []
+st.header("Ever Gouged by Council District")
+response = supabase.table('ever_gouged_by_council_district').select('*').execute()
+ever_gouged_by_council_district = pd.DataFrame(response.data)
+st.dataframe(ever_gouged_by_council_district)
 
-for idx, row in chart_dat.iterrows():
-    gouged_counts_by_day.append(dat.loc[dat["first_gouged_price_date"] <= idx].shape[0])
+st.header("Ever Gouged by First Gouged Date")
+response = supabase.table('ever_gouged_by_first_gouged_date').select('*').execute()
+ever_gouged_by_first_gouged_date = pd.DataFrame(response.data)
+st.dataframe(ever_gouged_by_first_gouged_date)
 
-chart_dat["gouged_count"] = gouged_counts_by_day
+st.header("Newly Gouged in Past Week")
+response = supabase.table('newly_gouged_in_past_week').select('*').execute()
+newly_gouged_in_past_week = pd.DataFrame(response.data)
+st.dataframe(newly_gouged_in_past_week)
 
-# 3)
-
-st.line_chart(chart_dat)
+st.header("Zipcode Metrics")
+response = supabase.table('zipcode_metrics').select('*').execute()
+zipcode_metrics = pd.DataFrame(response.data)
+st.dataframe(zipcode_metrics)
