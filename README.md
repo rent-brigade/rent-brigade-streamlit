@@ -1,10 +1,27 @@
 # rent-brigade-streamlit
-Streamlit functionality for rent brigade work.
 
-Work in progress. A more detailed set of instructions for environment setup will follow.
-For now, make sure to install streamlit, pandas, and numpy in your environment.
+## Setup
 
-In `plot.py`, update the path of the CSV being read in.
+Create a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate
+```
 
-To visualize, run the following:
-`streamlit run plot.py`
+Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+Basic example displaying supabase data as tables:
+```bash
+streamlit run plot.py
+```
+
+Map example displaying supabase data as a map with switcher for different datasets:
+```bash
+streamlit run map.py
+```
+
+
+
