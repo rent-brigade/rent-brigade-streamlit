@@ -71,8 +71,21 @@ Choropleth(
     legend_name="Ever Gouged Listings"
 ).add_to(m)
 
-# Display map
-st_data = st_folium(m, width=700, height=500)
+# Create layout: map on the left, table on the right
+col1, col2 = st.columns([2, 1])  # Wider map, narrower table
 
-# Fetch data from Supabase
-st.dataframe(df)
+# Display map
+with col1:
+    st_data = st_folium(m, width=700, height=500)
+
+# Display table
+with col2:
+    st.dataframe(
+        df[[id_field, "ever_gouged_listings"]]
+        .rename(columns={
+        id_field: "District",
+        "ever_gouged_listings": "Gouged Listings"
+    }), 
+        hide_index=True,
+        use_container_width=True
+    )
