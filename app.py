@@ -348,7 +348,10 @@ def main():
                              labelOffset=0,
                              title=None)),  # Remove y-axis title
         color=alt.value('#ff0000'),  # All markers in red
-        tooltip=['name', 'date_charged']
+        tooltip=[
+            alt.Tooltip('name:N', title='Charged Gouger'),
+            alt.Tooltip('date_charged:T', title='Date Charged', format='%B %-d, %Y')
+        ]
     )
     
     # Create a dummy chart with an invisible point
