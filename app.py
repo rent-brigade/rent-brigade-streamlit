@@ -332,7 +332,7 @@ def main():
     ).add_to(m)
 
     # Create two-column layout for map and data table
-    r2col1, r2col2 = st.columns([2.25, 1])  # Map takes more space than table
+    r2col1, r2col2 = st.columns([2, 1])  # Adjusted ratio for better responsiveness
 
     # Display the map
     with r2col1:
