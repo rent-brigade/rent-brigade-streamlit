@@ -13,14 +13,17 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Basic example displaying supabase data as tables:
+Create a `.streamlit` folder in the root directory and add the following file:
 ```bash
-streamlit run plot.py
+touch .streamlit/secrets.toml
 ```
 
-Map example displaying supabase data as a map with switcher for different datasets:
+Add SUPABASE_KEY to the `secrets.toml` file.
+
+
+Run the app: 
 ```bash
-streamlit run map.py
+streamlit run app.py
 ```
 
 
