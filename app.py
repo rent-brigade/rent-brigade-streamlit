@@ -115,6 +115,7 @@ def create_tooltip(col_name):
         localize=True,
         sticky=True,
         labels=True,
+        max_width=600,
         style="""
             background-color: #F0EFEF;
             border: 2px solid black;
@@ -122,16 +123,6 @@ def create_tooltip(col_name):
             box-shadow: 3px;
             padding: 8px;
             font-size: 14px;
-        """,
-        style_css="""
-            .leaflet-tooltip {
-                white-space: nowrap;
-            }
-            .leaflet-tooltip .label {
-                margin-right: 10px;
-                min-width: 100px;
-                display: inline-block;
-            }
         """
     )
 
@@ -184,10 +175,13 @@ def main():
     df_gouged_by_date = pd.DataFrame(gouged_by_date.data)
     df_gouged_by_date['first_gouged_price_date'] = pd.to_datetime(df_gouged_by_date['first_gouged_price_date'])
     total_gouged = df_gouged_by_date['gouged_listings'].sum()
+    last_update_date = df_gouged_by_date['first_gouged_price_date'].max().strftime('%m/%d/%Y')
 
     # ===== Header and Metrics Section =====
     # Display key metrics in a three-column layout
     st.title("Rent Gouging in Los Angeles County")
+    # Get the most recent date from the time series data
+    st.caption(f"Last updated: {last_update_date}")
     r1col1, r1col2, r1col3 = st.columns([1, 1, 1])
     
     # Total gouged listings metric
@@ -221,15 +215,64 @@ def main():
     # ===== Time Series Line Chart =====
     # Display cumulative gouged listings over time
     st.header("Rent-Gouged Listings Over Time")
-    st.altair_chart(
-        alt.Chart(df_gouged_by_date).mark_line(color='#ff0000').encode(
-            x=alt.X('first_gouged_price_date:T', title='Date'),
-            y=alt.Y('cumulative_count:Q', title='Total Gouged Listings')
-        ).properties(
-            width='container'
-        ),
-        use_container_width=True
+    
+    # Create the base chart
+    base = alt.Chart(df_gouged_by_date).encode(
+        x=alt.X('first_gouged_price_date:T', title='Date')
     )
+    
+    # Create the selection interval
+    nearest = alt.selection_single(
+        nearest=True,
+        on='mouseover',
+        clear='mouseout',
+        fields=['first_gouged_price_date'],
+        empty='none'
+    )
+    
+    # Create the line
+    line = base.mark_line(color='#ff0000').encode(
+        y=alt.Y('cumulative_count:Q', title='Total Gouged Listings')
+    )
+    
+    # Create a transparent layer for tooltips
+    tooltip_layer = base.mark_rect(
+        opacity=0,
+        width=1
+    ).encode(
+        tooltip=[
+            alt.Tooltip('first_gouged_price_date:T', title='Date', format='%m/%d/%Y'),
+            alt.Tooltip('gouged_listings:Q', title='New Gouges', format=',.0f'),
+            alt.Tooltip('cumulative_count:Q', title='Total Gouged', format=',.0f')
+        ]
+    ).add_selection(nearest)
+    
+    # Create the rule (vertical line) that follows the mouse
+    rule = base.mark_rule(color='gray').encode(
+        opacity=alt.condition(nearest, alt.value(0.5), alt.value(0))
+    ).transform_filter(nearest)
+    
+    # Create the point that follows the line
+    point = base.mark_point(color='red', size=50).encode(
+        y=alt.Y('cumulative_count:Q')
+    ).transform_filter(nearest)
+    
+    # Add a text label for the point
+    text = base.mark_text(
+        align='left',
+        baseline='middle',
+        dx=7
+    ).encode(
+        text=alt.Text('gouged_listings:Q', format=',.0f'),
+        y=alt.Y('cumulative_count:Q')
+    ).transform_filter(nearest)
+    
+    # Combine the charts
+    chart = (line + tooltip_layer + rule + point + text).properties(
+        width='container'
+    )
+    
+    st.altair_chart(chart, use_container_width=True)
 
     # Disable scroll zooming for the line chart to prevent accidental zooming
     st.markdown("""
