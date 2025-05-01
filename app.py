@@ -168,6 +168,11 @@ def main():
     # Initialize database connection and fetch initial data
     supabase = initialize_supabase_client()
     
+    # Load charged_gougers data
+    charged_gougers = supabase.table('charged_gougers').select('name', 'date_charged').execute()
+    df_charged_gougers = pd.DataFrame(charged_gougers.data)
+    num_charged_gougers = len(df_charged_gougers)
+    
     # Load and process the time series data
     gouged_by_date = supabase.table('agg_by_date').select(
         'first_gouged_price_date, gouged_listings, total_dollars_gouged, cumulative_count'
@@ -175,13 +180,17 @@ def main():
     df_gouged_by_date = pd.DataFrame(gouged_by_date.data)
     df_gouged_by_date['first_gouged_price_date'] = pd.to_datetime(df_gouged_by_date['first_gouged_price_date'])
     total_gouged = df_gouged_by_date['gouged_listings'].sum()
-    last_update_date = df_gouged_by_date['first_gouged_price_date'].max().strftime('%m/%d/%Y')
+    last_update_date = df_gouged_by_date['first_gouged_price_date'].max()
+    last_update_date_str = last_update_date.strftime('%m/%d/%Y')
+    
+    # Calculate the date 7 days before the last update
+    seven_days_ago = last_update_date - pd.Timedelta(days=7)
 
     # ===== Header and Metrics Section =====
     # Display key metrics in a three-column layout
     st.title("Rent Gouging in Los Angeles County")
     # Get the most recent date from the time series data
-    st.caption(f"Last updated: {last_update_date}")
+    st.caption(f"Last updated: {last_update_date_str}")
     r1col1, r1col2, r1col3 = st.columns([1, 1, 1])
     
     # Total gouged listings metric
@@ -191,9 +200,9 @@ def main():
     # 7-day trend metric
     with r1col2:
         # Calculate recent activity
-        recent_gouged = df_gouged_by_date.sort_values('first_gouged_price_date', ascending=False).head(7)
+        recent_gouged = df_gouged_by_date[df_gouged_by_date['first_gouged_price_date'] > seven_days_ago]
         last_seven_days = recent_gouged['gouged_listings'].sum()
-        prior_to_seven_days = df_gouged_by_date.sort_values('first_gouged_price_date', ascending=False).iloc[7:]
+        prior_to_seven_days = df_gouged_by_date[df_gouged_by_date['first_gouged_price_date'] <= seven_days_ago]
         prior_to_seven_days_total = prior_to_seven_days['gouged_listings'].sum()
         delta_percent = ((total_gouged - prior_to_seven_days_total) / total_gouged) * 100 if prior_to_seven_days_total > 0 else 0
         
@@ -272,6 +281,7 @@ def main():
         width='container'
     )
     
+    # Display the chart in the first column
     st.altair_chart(chart, use_container_width=True)
 
     # Disable scroll zooming for the line chart to prevent accidental zooming
@@ -282,6 +292,148 @@ def main():
             }
         </style>
     """, unsafe_allow_html=True)
+    
+     # ===== Charged Gougers Metric =====
+    # Calculate the percentage increase in the number of charged gougers
+    df_charged_gougers['date_charged'] = pd.to_datetime(df_charged_gougers['date_charged'])
+    recent_charged = df_charged_gougers[df_charged_gougers['date_charged'] > seven_days_ago]
+    num_charged_gougers_recent = len(recent_charged)
+    if num_charged_gougers > 0:
+        gougers_delta_percent = (num_charged_gougers_recent / num_charged_gougers) * 100
+    else:
+        gougers_delta_percent = 0
+    
+    # Sort by date_charged
+    df_timeline = df_charged_gougers.dropna(subset=['name', 'date_charged']).copy()
+    df_timeline['date_charged'] = pd.to_datetime(df_timeline['date_charged'])
+    df_timeline = df_timeline.sort_values('date_charged', ascending=True)
+    
+    # Create a dummy point for today
+    today = pd.Timestamp.now().normalize()
+    dummy_data = pd.DataFrame({
+        'name': [''],
+        'date_charged': [today]
+    })
+    
+    # Charged Gougers metric
+    st.header("Enforcement Actions")
+    r2col1, r2col2 = st.columns([1, 1])
+    with r2col1:
+        st.metric(
+            label="Total Gougers Charged", 
+            value=num_charged_gougers,
+        )
+        
+    with r2col2:
+        st.metric(
+            label="Gougers Charged in Last 7 Days", 
+            value=num_charged_gougers_recent,
+            delta=f"{gougers_delta_percent:.1f}% increase",
+            delta_color="inverse"
+        )
+        
+    st.subheader("Gougers Charged Over Time")
+    
+    # Create the main chart
+    main_chart = alt.Chart(df_timeline).mark_circle(
+        size=100,  # Increased circle size
+    ).encode(   
+        x=alt.X('date_charged:T', 
+                axis=alt.Axis(format='%b %-d',  # Format like "Jan 1" without year and without padding
+                             title=None)),  # Remove x-axis title
+        y=alt.Y('name:N', 
+                sort=alt.EncodingSortField('date_charged', order='ascending'),
+                axis=alt.Axis(labelLimit=0,  # Prevent label truncation
+                             labelBaseline='middle',  # Center labels vertically
+                             labelOffset=0,
+                             title=None)),  # Remove y-axis title
+        color=alt.value('#ff0000'),  # All markers in red
+        tooltip=['name', 'date_charged']
+    )
+    
+    # Create a dummy chart with an invisible point
+    dummy_chart = alt.Chart(dummy_data).mark_point(
+        opacity=0
+    ).encode(
+        x='date_charged:T',
+        y=alt.Y('name:N', sort=alt.EncodingSortField('date_charged', order='ascending'))
+    )
+    
+    # Create gridlines
+    x_grid_data = pd.DataFrame({
+        'date': pd.date_range(
+            start=df_timeline['date_charged'].min(),
+            end=today,
+            freq='MS'  # Month Start
+        )
+    })
+    
+    x_grid_chart = alt.Chart(x_grid_data).mark_rule(
+        color='lightgray',
+        opacity=0.3
+    ).encode(
+        x='date:T',
+        y=alt.value(0),
+        y2=alt.value(250)  # Shorter gridlines
+    )
+    
+    # Create y-axis gridlines
+    y_grid_data = pd.DataFrame({
+        'name': df_timeline['name'].unique(),
+        'date_charged': [df_timeline[df_timeline['name'] == name]['date_charged'].min() for name in df_timeline['name'].unique()]
+    })
+    
+    y_grid_chart = alt.Chart(y_grid_data).mark_rule(
+        color='lightgray',
+        opacity=0.2,
+        strokeWidth=0.5
+    ).encode(
+        y=alt.Y('name:N', 
+                sort=alt.EncodingSortField('date_charged', order='ascending'))
+    )
+    
+    # Create today's line
+    today_data = pd.DataFrame({
+        'date': [today],
+        'label': ['Today']
+    })
+    
+    today_line = alt.Chart(today_data).mark_rule(
+        color='#FFB6C1',  # Light red
+        strokeWidth=2
+    ).encode(
+        x='date:T',
+        y=alt.value(0),
+        y2=alt.value(250)  # Shorter today line
+    )
+    
+    today_label = alt.Chart(today_data).mark_text(
+        align='left',
+        baseline='middle',
+        dx=5,  # Offset from the line
+        color='#FFB6C1'  # Same light red
+    ).encode(
+        x='date:T',
+        y=alt.value(0),  # Position at the top
+        text='label:N'
+    )
+    
+    # Combine all charts
+    chart = (x_grid_chart + y_grid_chart + today_line + today_label + main_chart + dummy_chart).properties(
+        width='container',
+        height=300
+    ).configure(
+        axisX={
+            'tickCount': 'month',
+            'format': '%B',  # Show full month names
+            'labelAngle': 0,  # Keep labels horizontal
+            'labelPadding': 0,  # Remove padding
+            'grid': False,  # Hide the default grid
+            'labelOffset': -3.5  # Shift labels left
+        }
+    )
+    
+    st.altair_chart(chart, use_container_width=True)
 
     # ===== Egregious Gouges Table =====
     st.header("Particularly Egregious Gouges 🔪")
@@ -332,14 +484,14 @@ def main():
     ).add_to(m)
 
     # Create two-column layout for map and data table
-    r2col1, r2col2 = st.columns([2, 1])  # Adjusted ratio for better responsiveness
+    r3col1, r3col2 = st.columns([2, 1])  # Adjusted ratio for better responsiveness
 
     # Display the map
-    with r2col1:
+    with r3col1:
         st_folium(m, use_container_width=True, height=600)
 
     # Display the data table
-    with r2col2:
+    with r3col2:
         # Prepare and display the table data
         table_data = prepare_table_data(geojson_data, cfg["table_name"] == 'city_geojson')
         dynamic_height = calculate_table_height(len(table_data))
