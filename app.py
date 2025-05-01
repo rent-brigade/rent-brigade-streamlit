@@ -436,7 +436,7 @@ def main():
     st.altair_chart(chart, use_container_width=True)
 
     # ===== Egregious Gouges Table =====
-    st.header("Particularly Egregious Gouges 🔪")
+    st.header("Particularly Egregious Gouges")
     # Get the columns to display from the configuration
     column_config = create_column_config()
     display_columns = [col for col, config in column_config.items() if config["display"]]
