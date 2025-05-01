@@ -5,6 +5,7 @@ import folium
 from folium import Choropleth
 from streamlit_folium import st_folium
 import altair as alt
+from listing_display import create_column_config, display_gouges_table
 
 # ===== Configuration =====
 # These constants define the application's configuration and behavior
@@ -203,9 +204,10 @@ def main():
         delta_percent = ((total_gouged - prior_to_seven_days_total) / total_gouged) * 100 if prior_to_seven_days_total > 0 else 0
         
         st.metric(
-            label="Total Listings Gouged in Last 7 Days", 
+            label="New Gouges in Last 7 Days", 
             value=last_seven_days,
-            delta=f"{delta_percent:.1f}% increase"
+            delta=f"{delta_percent:.1f}% increase",
+            delta_color="inverse"
         )
     
     # Total dollars gouged metric
@@ -218,7 +220,7 @@ def main():
 
     # ===== Time Series Line Chart =====
     # Display cumulative gouged listings over time
-    st.header("Rent-Gouged Listings Over Time")
+    st.header("Rent-Gouged Listings Over Time 📈")
     st.altair_chart(
         alt.Chart(df_gouged_by_date).mark_line(color='#ff0000').encode(
             x=alt.X('first_gouged_price_date:T', title='Date'),
@@ -237,6 +239,20 @@ def main():
             }
         </style>
     """, unsafe_allow_html=True)
+
+    # ===== Egregious Gouges Table =====
+    st.header("Particularly Egregious Gouges 🔪")
+    # Get the columns to display from the configuration
+    column_config = create_column_config()
+    display_columns = [col for col, config in column_config.items() if config["display"]]
+    
+    # Fetch the egregious gouges data from Supabase
+    gouges_data = supabase.table('egregious_gouges').select(','.join(display_columns)).execute()
+    df_gouges = pd.DataFrame(gouges_data.data)
+    
+    # Sort and display the table
+    df_gouges = df_gouges.sort_values("base_vs_latest_price", ascending=False)
+    display_gouges_table(df_gouges, column_config)
 
     # ===== Map Section =====
     # Interactive map showing gouged listings by geographic region
