@@ -187,7 +187,7 @@ def main():
 
     # ===== Header and Metrics Section =====
     # Display key metrics in a three-column layout
-    st.header("Rent Gouging in Los Angeles County")
+    st.title("Rent Gouging in Los Angeles County")
     r1col1, r1col2, r1col3 = st.columns([1, 1, 1])
     
     # Total gouged listings metric
@@ -220,7 +220,7 @@ def main():
 
     # ===== Time Series Line Chart =====
     # Display cumulative gouged listings over time
-    st.header("Rent-Gouged Listings Over Time 📈")
+    st.header("Rent-Gouged Listings Over Time")
     st.altair_chart(
         alt.Chart(df_gouged_by_date).mark_line(color='#ff0000').encode(
             x=alt.X('first_gouged_price_date:T', title='Date'),
