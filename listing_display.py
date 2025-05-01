@@ -62,7 +62,7 @@ def create_column_config() -> Dict[str, ColumnConfig]:
             "width": None
         },
         "base_price": {
-            "name": "Base Price", 
+            "name": "Original Price", 
             "display": True, 
             "is_link": False, 
             "format_type": "currency",
