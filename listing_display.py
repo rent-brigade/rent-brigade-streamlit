@@ -62,7 +62,7 @@ def create_column_config() -> Dict[str, ColumnConfig]:
             "width": None
         },
         "base_price": {
-            "name": "Original Price", 
+            "name": "Orig. Price", 
             "display": True, 
             "is_link": False, 
             "format_type": "currency",
@@ -139,8 +139,8 @@ def create_column_config() -> Dict[str, ColumnConfig]:
             "width": None
         },
         "first_gouged_date": {
-            "name": "First Gouged Date",             
-            "display": False, 
+            "name": "First Gouged",             
+            "display": True, 
             "is_link": False, 
             "format_type": "date",
             "width": None
@@ -154,7 +154,9 @@ def format_value(value, format_type: str, column_name: str = None):
     
     if format_type == "date":
         try:
-            # Convert to datetime and format as date only
+            # Convert to datetime and format based on column
+            if column_name == "first_gouged_date":
+                return pd.to_datetime(value).strftime('%b %-d')  # Format like "Jan 1"
             return pd.to_datetime(value).strftime('%Y-%m-%d')
         except:
             return value
@@ -184,12 +186,17 @@ def display_gouges_table(df: pd.DataFrame, column_config: Dict[str, ColumnConfig
     display_columns = [col for col, config in column_config.items() if config["display"]]
     df_display = df[display_columns].copy()
     
-    # Combine address and city
-    df_display["address"] = df_display["address"].str.lower().str.title() + ", " + df_display["city"].str.lower().str.title()
+    # Format address with city, limiting length
+    df_display["address"] = (df_display["address"].str.lower().str.title() + ", " + df_display["city"].str.lower().str.title())
     
     # Remove city column since it's now part of address
     if "city" in df_display.columns:
         df_display = df_display.drop(columns=["city"])
+    
+    # Reorder columns to put first_gouged_date after Type
+    column_order = ['listing_url', 'address', 'bedrooms', 'first_gouged_date']
+    remaining_columns = [col for col in df_display.columns if col not in column_order]
+    df_display = df_display[column_order + remaining_columns]
     
     # Apply formatting to each column
     for col in df_display.columns:
@@ -211,7 +218,7 @@ def display_gouges_table(df: pd.DataFrame, column_config: Dict[str, ColumnConfig
         elif col == "base_vs_latest_price":
             st_column_config[col] = st.column_config.ProgressColumn(
                 config["name"],
-                width=config["width"],
+                width="small",  # Make the progress bar shorter
                 min_value=0,
                 max_value=200,  # Cap at 200% for visualization
                 format="%.0f%%",

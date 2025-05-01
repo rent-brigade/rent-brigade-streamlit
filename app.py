@@ -316,7 +316,7 @@ def main():
     })
     
     # Charged Gougers metric
-    st.header("Enforcement Actions")
+    st.header("Enforcement")
     r2col1, r2col2 = st.columns([1, 1])
     with r2col1:
         st.metric(
