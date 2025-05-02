@@ -180,7 +180,7 @@ def main():
     df_gouged_by_date = pd.DataFrame(gouged_by_date.data)
     df_gouged_by_date['first_gouged_price_date'] = pd.to_datetime(df_gouged_by_date['first_gouged_price_date'])
     total_gouged = df_gouged_by_date['gouged_listings'].sum()
-    last_update_date = df_gouged_by_date['first_gouged_price_date'].max()
+    last_update_date = df_gouged_by_date['first_gouged_price_date'].max() + pd.Timedelta(days=1)
     last_update_date_str = last_update_date.strftime('%m/%d/%Y')
     
     # Calculate the date 7 days before the last update
