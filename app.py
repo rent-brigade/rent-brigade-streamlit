@@ -195,7 +195,7 @@ def main():
     
     # Total gouged listings metric
     with r1col1:
-        st.metric(label="Total Gouged Listings", value='${:,}'.format(total_gouged))
+        st.metric(label="Total Gouged Listings", value='{:,}'.format(total_gouged))
     
     # 7-day trend metric
     with r1col2:
