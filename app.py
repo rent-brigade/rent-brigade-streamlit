@@ -312,7 +312,7 @@ def main():
     display_gouges_table(df_gouges, column_config)
 
     # ===== Map Section =====
-    display_map_section(supabase)
+    # display_map_section(supabase)
 
 if __name__ == "__main__":
     main()
