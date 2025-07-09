@@ -183,7 +183,7 @@ def main():
     total_gouged = df_gouged_by_date['gouged_listings'].sum()
     last_update_date = max(df_gouged_by_date['first_gouged_price_date'].max() + pd.Timedelta(days=1), pd.Timestamp.now().normalize())
     last_update_date_str = last_update_date.strftime('%m/%d/%Y')
-    
+    print(last_update_date)
     # Calculate the date 7 days before the last update
     seven_days_ago = last_update_date - pd.Timedelta(days=7)
 
